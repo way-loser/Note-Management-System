@@ -14,13 +14,13 @@ typedef struct FileNode
     int filenumber;      // 文件夹包含的文件（夹）数量
     FileTree *files;     // 文件夹包含的文件（夹）列表
     FileTree pNode;      // 上级目录
-    char tag[3][30];     // 至多支持3个标签标签
+    char tag[3][30];     // 至多支持3个标签
 } FileNode, *FileTree;
 
 /**
  * @brief 初始化文件系统，新建一个根目录节点ROOT
- * 
- * @return FileTree 
+ *
+ * @return FileTree
  */
 FileTree init();
 
