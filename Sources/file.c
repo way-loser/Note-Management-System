@@ -105,23 +105,6 @@ FileTree CreateFileTree(char *root, FileType file[], int n)
     }
     return bt;
 }
-/**
- * @brief 初始化文件系统，新建一个根目录节点ROOT
- *
- * @return FileTree
- */
-/*FileTree init()
-{
-    FileTree root;
-    root = (FileTree)malloc(sizeof(FileNode)); // 分配内存空间
-    strcpy(root->name, "ROOT");                // 命名
-    strcpy(root->path, "ROOT");                // 命名路径
-    root->flag = 0;                            // 标识为文件夹
-    root->filenumber = 0;                      // 初始包含文件夹为0
-    root->files = NULL;                        // 包含列表为空
-    root->pNode;                               // 无上级目录
-    return root;                               // 返回初始化的节点
-}*/
 
 /**
  * @brief ls: 显示当前目录下所有的笔记文件和文件夹
@@ -137,14 +120,6 @@ void ls(FileTree pNode)
     }
     printf("\n");
 }
-/*void ls(FileTree pNode)
-{
-    for (int i = 0; i < pNode->filenumber; i++)
-    {
-        printf("%s ", pNode->files[i]->name);
-    }
-    printf("\n");
-}*/
 
 //! 有大问题，树状结构如何显示
 /**
@@ -167,21 +142,6 @@ void ls_a(FileTree pNode)
     }
     printf("\n");
 }
-/*void ls_a(FileTree pNode)
-{
-    for (int i = 0; i < pNode->filenumber; i++)
-    {
-        printf("%s ", pNode->files[i]->name);
-        if (pNode->files[i]->flag == 0) // 如果是文件夹
-        {
-            printf("<");
-            ls_a(pNode->files[i]); // 递归调用
-            printf(">");
-        }
-        printf("\n");
-    }
-    printf("\n");
-}*/
 
 /**
  * @brief ls <笔记文件夹路径>：显示命令指定文件下所有的内容(子笔记文件夹和笔记文件)
@@ -226,7 +186,7 @@ void rm(FileTree pNode, char *filename, FileType file[], int *n)
                 {
                     if (strcmp(p->sbi->name, filename) == 0)
                     {
-                        p->sbi=p->sbi->sbi;
+                        p->sbi = p->sbi->sbi;
                         free(p->sbi);
                         break;
                     }
@@ -235,32 +195,15 @@ void rm(FileTree pNode, char *filename, FileType file[], int *n)
 
             for (int j = i; j < *n; j++) // 后面的数据前移
             {
-                file[j]=file[j+1];
+                file[j] = file[j + 1];
             }
-            
+
             (*n)--;
         }
     }
     printf("未能找到次文件\n");
     return;
 }
-/*int rm(FileTree pNode, char *filename)
-{
-    for (int i = 0; i < pNode->filenumber; i++)
-    {
-        if (!strcmp(pNode->files[i]->name, filename)) // 文件名配对
-        {
-            free(pNode->files[i]);                            // 删除节点
-            for (int j = i; j < (pNode->filenumber - 1); j++) // 后面的节点前移
-            {
-                pNode->files[j] = pNode->files[j + 1];
-            }
-            pNode->filenumber--;
-            return 1;
-        }
-    }
-    return 0;
-}*/
 
 /**
  * @brief rm -r <笔记文件夹名称>：删除制定文件以及其内部所有内容
@@ -292,6 +235,7 @@ void rm_r(FileTree pNode, char *filename, FileType file[], int *n)
             if (strcmp(p->name, filename) == 0) // 如果是亲代的第一个子节点
             {
                 pNode->fchild = p->sbi;
+                PostOrderTraverse(p, file, n);
                 free(p);
             }
             else // 如果是兄弟节点，“嫁接”
@@ -300,61 +244,44 @@ void rm_r(FileTree pNode, char *filename, FileType file[], int *n)
                 {
                     if (strcmp(p->sbi->name, filename) == 0)
                     {
-                        p->sbi=p->sbi->sbi;
+                        p->sbi = p->sbi->sbi;
+                        PostOrderTraverse(p, file, n);
                         free(p->sbi);
                         break;
                     }
                 }
             }
-
-            for (int j = i; j < *n; j++) // 后面的数据前移
-            {
-                file[j]=file[j+1];
-            }
-            
-            (*n)--;
         }
     }
     printf("未能找到次文件\n");
     return;
 }
-/*int rm_r(FileTree pNode, char *dirname)
+void PostOrderTraverse(FileTree pNode, FileType file[], int *n)
 {
-    for (int i = 0; i < pNode->filenumber; i++)
+    if (pNode)
     {
-        if (!strcmp(pNode->files[i]->name, dirname)) // 文件名配对
-        {
-            deleteFolder_Recursion(pNode->files[i]); //! 删除其内部所有内容,递归
+        PostOrderTraverse(pNode->fchild, file, n);
+        PostOrderTraverse(pNode->sbi, file, n);
+        DeleteNode(pNode, file, n);
+    }
+    return; //如果结点为空，返回上一层
+}
+void DeleteNode(FileTree pNode, FileType file[], int *n)
+{
 
-            free(pNode->files[i]);                            // 删除节点
-            for (int j = i; j < (pNode->filenumber - 1); j++) // 后面的节点前移
+    for (int i = 0; i < n; i++)
+    {
+        if (strcmp(file[i].name, pNode->name) == 0)
+        {
+            for (int j = i; j < *n; j++) // 后面的数据前移
             {
-                pNode->files[j] = pNode->files[j + 1];
+                file[j] = file[j + 1];
             }
-            pNode->filenumber--;
-            return 1;
+
+            (*n)--;
         }
     }
-    return 0;
-}*/
-/**
- * @brief 递归删除文件夹内所有内容
- *
- * @param pNode
- */
-/*void deleteFolder_Recursion(FileTree pNode)
-{
-    if (pNode->flag == 1) // 如果是文件,删除并结束递归
-    {
-        free(pNode);
-        return;
-    }
-    for (int i = 0; i < pNode->filenumber; i++)
-    {
-        deleteFolder_Recursion(pNode->files[i]);
-    }
-    return;
-}*/
+}
 
 /**
  * @brief mkdir<笔记文件名>: 在当前文件夹pNode下新建文件
@@ -403,21 +330,6 @@ void mkdir(FileTree pNode, char *filename, FileType file[], int *n)
         }
     }
 }
-/*void mkdir(FileTree pNode, char *filename)
-{
-    if (pNode->files == NULL) // 给当前文件夹pNode的下级列表分配内存
-    {
-        pNode->files = (FileTree *)malloc(sizeof(FileTree) * FILEMAXN);
-    }
-    pNode->files[pNode->filenumber] = (FileTree)malloc(sizeof(FileNode));
-
-    FileTree dir = pNode->files[pNode->filenumber++];
-    strcpy(dir->name, filename); // 文件名
-    dir->flag = 1;               // 标识1为文件
-    dir->filenumber = 0;         // 不包含其他文件（夹）
-    dir->files = NULL;           // 无包含文件列表
-    dir->pNode = pNode;          // 上级目录
-}*/
 
 /**
  * @brief mkdir -r<笔记文件夹名>: 新建文件夹
@@ -466,24 +378,3 @@ void mkdir_r(FileTree pNode, char *filename, FileType file[], int *n)
         }
     }
 }
-/*void mkdir_r(FileTree pNode, char *dirname)
-{
-    if (pNode->files == NULL) // 给当前文件夹pNode的下级列表分配内存
-    {
-        pNode->files = (FileTree *)malloc(sizeof(FileTree) * FILEMAXN);
-    }
-    pNode->files[pNode->filenumber] = (FileTree)malloc(sizeof(FileNode));
-
-    FileTree dir = pNode->files[pNode->filenumber++];
-    strcpy(dir->name, dirname); // 文件夹名
-    dir->flag = 0;              // 标识0为文件夹
-    dir->filenumber = 0;        // 不包含其他文件（夹）
-    dir->files = NULL;          // 无包含文件列表
-    dir->pNode = pNode;         // 上级目录
-                                // 生成当前路径
-    char tmp[PATHMAXN];
-    strcpy(tmp, pNode->path);
-    strcat(tmp, "\\");
-    strcat(tmp, dirname);
-    strcpy(dir->path, tmp);
-}*/
