@@ -3,42 +3,17 @@
 
 #define NAMEMAXN 100
 #define PATHMAXN 1000
-#define FILEMAXN 100 // 文件夹最多储存文件数
-
-//! 第一版
-/* typedef struct FileNode
-{
-    char name[NAMEMAXN]; // 文件名或者文件夹名
-    char path[PATHMAXN]; // 文件（夹）路径
-    int flag;            // 区分文件或者文件夹的标识->0: 文件夹，1: 文件
-    char datetime[20];   // 文件创建日期
-    int filenumber;      // 文件夹包含的文件（夹）数量
-    FileTree *files;     // 文件夹包含的文件（夹）列表
-    FileTree pNode;      // 上级目录
-    char tag[3][30];     // 至多支持3个标签
-} FileNode, *FileTree; */
-
-//! 第二版
-/* typedef struct Elem
-{
-    char name[NAMEMAXN]; // 文件名或者文件夹名
-    char path[PATHMAXN]; // 文件（夹）路径
-    char datetime[20];   // 文件创建日期
-    char tag[3][30];     // 至多支持3个标签
-} Elem;
-typedef struct Node
-{
-    Elem data;       // 节点数据
-    Tree child, sbi; // 指向第一个子节点和下一个兄弟节点的指针
-} Node, *Tree; */
+#define FILEMAXN 200 // 文件夹最多储存文件数
 
 //! 第三版
 typedef struct FileType
 {
     char fathername[NAMEMAXN]; // 父节点名称
     char name[NAMEMAXN];       // 文件名或者文件夹名
+    char path[PATHMAXN];       // 文件（夹）路径
     int flag;                  // 区分文件或者文件夹的标识->0: 文件夹，1: 文件
     char datetime[20];         // 文件创建日期
+    int tagnum;                // 标签数量
     char tag[3][30];           // 至多支持3个标签
 } FileType;
 typedef struct FileNode
@@ -141,5 +116,54 @@ void mkdir(FileTree pNode, char *filename, FileType file[], int *n);
  * @param n 数组长度
  */
 void mkdir_r(FileTree pNode, char *filename, FileType file[], int *n);
+
+/**
+ * @brief tag <笔记文件名/笔记文件夹名> 显示当前目录下的指定笔记/文件夹的标签
+ *
+ * @param pNode,当前目录的节点
+ * @param filename 指定的文件夹或文件
+ * @param file  该用户的数组
+ * @param n    数组的长度
+ */
+void tag(FileNode *pNode, char *filename, FileType file[], int n);
+
+/**
+ * @brief tag-add <笔记文件名/笔记文件夹名> 在当前目录下指定的笔记/笔记文件夹增加标签
+ *
+ * @param pNode,当前目录的节点
+ * @param filename 指定的文件夹或文件
+ * @param tagname 标签的名字
+ * @param file  该用户的数组
+ * @param n    数组的长度
+ */
+void tag_add(FileNode *pNode, char *filename, char *tagname, FileType file[], int n);
+
+/**
+ * @brief tag-add <笔记文件名/笔记文件夹名>> “标签内容”: 在当前目录下指定的笔记/笔记文件夹删除指定的标签
+ *
+ * @param pNode,当前目录的节点
+ * @param filename 指定的文件夹或文件
+ * @param tagname 标签的名字
+ * @param file  该用户的数组
+ * @param n    数组的长度
+ */
+void tag_del(FileNode *pNode, char *filename, char *tagname, FileType file[], int n);
+
+/**
+ * @brief tag-s “标签内容”： 根据标签内容，在当前目录下进行笔记搜索，输出匹配的标签所对应的笔记文件名
+ * @param pNode,当前目录的节点
+ * @param tagname 标签的名字
+ * @param file  该用户的数组
+ * @param n    数组的长度
+ */
+void tag_s(FileNode *pNode, char *tagname, FileType file[], int n);
+
+/**
+ * @brief tag-sa “标签内容”： 根据标签内容，对所有笔记进行搜索，输出匹配的标签所对应的笔记的文件名以及绝对路径
+ * @param tagname 标签的名字
+ * @param file  该用户的数组
+ * @param n    数组的长度
+ */
+void tag_sa(char *tagname, FileType file[], int n);
 
 #endif

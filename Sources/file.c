@@ -9,11 +9,11 @@ void UsersOperation(char *filename)
     FileType file[FILEMAXN];
     int n;
     ReadFile(file, &n, filename);
-    CreateFileTree("Root", file, n);
+    FileTree root = CreateFileTree("Root", file, n); // 创建树，root为根节点
     ShowInfo();
     char operation[NAMEMAXN];
     while (gets(operation) != NULL) //获取输入
-    {                              // 分割出操作命令和参数
+    {                               // 分割出操作命令和参数
         char *op_1 = strtok(operation, " ");
         char *op_2 = strtok(NULL, " ");
         char *op_3 = strtok(NULL, " ");
@@ -57,7 +57,7 @@ void ShowInfo()
 {
     system("cls");
     printf("  ******************************************************\n\n");
-    printf("  *                欢迎使用文件模拟系统                 *\n \n");
+    printf("  *                欢迎使用笔记管理系统                 *\n \n");
     printf("  ******************************************************\n\n");
     printf("  该系统目前支持如下功能：\n");
     printf("  1.显示当前目录下所有的笔记文件: ls\n");
@@ -158,7 +158,7 @@ void ReadFile(FileType file[], int *n, char *filename)
 }
 
 /**
- * @brief Create a File Tree object
+ * @brief 根据所读取的数组构建一棵树
  *
  * @param root 根节点传入"Root"
  * @param file
@@ -244,8 +244,39 @@ void ls_a(FileTree pNode, int level)
 
 /**
  * @brief ls <笔记文件夹路径>：显示命令指定文件下所有的内容(子笔记文件夹和笔记文件)
- * 可以采用遍历
+ * @brief 目前只支持绝对路径
+ *
+ * @param dirpath 输入的路径名称
+ * @param file 数组
+ * @param pNode 需要传入Root节点
+ * @param n 数组长度
  */
+void ls_dir(char *dirpath, FileType file[], FileTree pNode, int n)
+{
+    for (int i = 0; i < n; i++)
+    {
+        if (strcmp(file[i].path, dirpath))
+        {
+            FileTree b = PreOrderFindNode_Path(pNode, file[i].name); // 查找匹配的节点
+            ls(b);                                                   // 调用ls()函数，打印路径下的所有内容
+        }
+        else
+        {
+            printf("未能找到此路径\n");
+        }
+    }
+}
+//! 未完成
+/**
+ * @brief 用先序遍历递归查找匹配的节点
+ *
+ * @param pNode
+ * @param filename
+ * @return FileTree
+ */
+FileTree PreOrderFindNode_Path(FileTree pNode, char *filename)
+{
+}
 
 /**
  * @brief rm <笔记文件名>：对笔记文件进行删除
@@ -469,6 +500,13 @@ void mkdir_r(FileTree pNode, char *filename, FileType file[], int *n)
             }
             strcpy(file[*n].fathername, pNode->name);
             strcpy(file[*n].name, filename);
+            // 生成当前路径
+            char tmp[PATHMAXN];
+            strcpy(tmp, file[i].path);
+            strcat(tmp, "\\");
+            strcat(tmp, filename);
+            strcpy(file[*n].path, tmp);
+
             file[*n].flag = 0; // 0表示这是一个文件夹
             strcpy(file[*n].datetime, getDateTime());
             FileTree p = pNode->fchild;
@@ -486,6 +524,173 @@ void mkdir_r(FileTree pNode, char *filename, FileType file[], int *n)
             }
 
             (*n)++;
+        }
+    }
+}
+
+/**
+ * @brief tag <笔记文件名/笔记文件夹名> 显示当前目录下的指定笔记/文件夹的标签
+ *
+ * @param pNode,当前目录的节点
+ * @param filename 指定的文件夹或文件
+ * @param file  该用户的数组
+ * @param n    数组的长度
+ */
+void tag(FileNode *pNode, char *filename, FileType file[], int n)
+{
+    int i, j;
+    for (i = 0; i < n; i++)
+    {
+        if (strcmp(filename, file[i].name) == 0) //找到相同的名字, 但不一定是该目录下的
+        {
+            if (strcmp(file[i].fathername, pNode->name) == 0) //表示在该目录下
+            {
+                for (j = 0; j < file[i].tagnum; j++)
+                {
+                    printf("标签%d: %s\n", j + 1, file[i].tag[j]); //打印标签
+                }
+                break;
+            }
+        }
+    }
+    if (i == n) //没有找到该文件(夹)
+    {
+        printf("该目录下没有指定的文件(夹)\n");
+    }
+}
+
+/**
+ * @brief tag-add <笔记文件名/笔记文件夹名> 在当前目录下指定的笔记/笔记文件夹增加标签
+ *
+ * @param pNode,当前目录的节点
+ * @param filename 指定的文件夹或文件
+ * @param tagname 标签的名字
+ * @param file  该用户的数组
+ * @param n    数组的长度
+ */
+void tag_add(FileNode *pNode, char *filename, char *tagname, FileType file[], int n)
+{
+    int i, j;
+    for (i = 0; i < n; i++)
+    {
+        if (strcmp(filename, file[i].name) == 0) //找到相同的名字, 但不一定是该目录下的
+        {
+            if (strcmp(file[i].fathername, pNode->name) == 0) //表示在该目录下
+            {
+                if (file[i].tagnum > 2) //表示超过当前最大的标签数量
+                {
+                    printf("超过最大的标签数\n");
+                }
+                else
+                {
+                    for (j = 0; j < file[i].tagnum; j++) //寻找是否有相同的标签名字
+                    {
+                        if (strcmp(file[i].tag[j], tagname) == 0)
+                        {
+                            printf("添加失败, 该标签已存在\n");
+                            break;
+                        }
+                    }
+                    if (j == file[i].tagnum) //没有找到相同的标签名字
+                    {
+                        strcpy(file[i].tag[j], tagname);
+                        file[i].tagnum++;
+                        printf("添加成功\n");
+                    }
+                }
+                break;
+            }
+        }
+    }
+    if (i == n)
+    {
+        printf("该目录下没有找到指定的文件(夹)\n");
+    }
+}
+
+/**
+ * @brief tag-add <笔记文件名/笔记文件夹名>> “标签内容”: 在当前目录下指定的笔记/笔记文件夹删除指定的标签
+ *
+ * @param pNode,当前目录的节点
+ * @param filename 指定的文件夹或文件
+ * @param tagname 标签的名字
+ * @param file  该用户的数组
+ * @param n    数组的长度
+ */
+void tag_del(FileNode *pNode, char *filename, char *tagname, FileType file[], int n)
+{
+    int i, j;
+    for (i = 0; i < n; i++)
+    {
+        if (strcmp(filename, file[i].name) == 0) //找到相同的名字, 但不一定是该目录下的
+        {
+            if (strcmp(file[i].fathername, pNode->name) == 0) //表示在该目录下
+            {
+                for (j = 0; j < file[i].tagnum; j++)
+                {
+                    if (strcmp(file[i].tag[j], tagname) == 0) //找到该标签
+                    {
+                        file[i].tagnum--;                                  //标签数量-1
+                        memset(file[i].tag[j], 0, sizeof(file[i].tag[j])); //清空内容
+                        printf("删除成功\n");
+                    }
+                }
+                if (j == file[i].tagnum)
+                {
+                    printf("没有找到该标签\n");
+                }
+                break;
+            }
+        }
+    }
+    if (i == n)
+    {
+        printf("该目录下没有找到指定的文件(夹)\n");
+    }
+}
+
+/**
+ * @brief tag-s “标签内容”： 根据标签内容，在当前目录下进行笔记搜索，输出匹配的标签所对应的笔记文件名
+ * @param pNode,当前目录的节点
+ * @param tagname 标签的名字
+ * @param file  该用户的数组
+ * @param n    数组的长度
+ */
+void tag_s(FileNode *pNode, char *tagname, FileType file[], int n)
+{
+    int i, j;
+    for (i = 0; i < n; i++) // 找到当前路径下的文件(夹)
+    {
+        if (strcmp(file[i].fathername, pNode->name) == 0) //在当前目录下的
+        {
+            for (j = 0; j < file[i].tagnum; j++)
+            {
+                if (strcmp(file[i].tag[j], tagname) == 0) //找到相同的标签
+                {
+                    printf("<%s>\n", file[i].name); //打印文件(夹)名字
+                }
+            }
+        }
+    }
+}
+
+/**
+ * @brief tag-sa “标签内容”： 根据标签内容，对所有笔记进行搜索，输出匹配的标签所对应的笔记的文件名以及绝对路径
+ * @param tagname 标签的名字
+ * @param file  该用户的数组
+ * @param n    数组的长度
+ */
+void tag_sa(char *tagname, FileType file[], int n)
+{
+    int i, j;
+    for (i = 0; i < n; i++)
+    {
+        for (j = 0; j < file[i].tagnum; j++)
+        {
+            if (strcmp(tagname, file[i].tag[j]) == 0) //找到相同名称的标签
+            {
+                printf("%-20s\t%-20s", file[i].name, file[i].path); //打印文件名和文件路径
+            }
         }
     }
 }
