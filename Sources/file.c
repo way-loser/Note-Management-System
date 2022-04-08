@@ -175,18 +175,20 @@ FileTree CreateFileTree(char *root, FileType file[], int n)
     {
         ;
     }
-    if (i < n) // 若找到第一个父节点名称为root的
+    if (i < n) // 若找到第一个父节点名称为root的，即找到第一个子节点fchild
     {
         FileTree p = (FileTree)malloc(sizeof(FileNode)); // 创建一个临时指针
         p->fchild = p->sbi = NULL;
         strcpy(p->name, file[i].name);
         bt->fchild = p;
+        p->father = bt; // 指向父节点
 
         for (j = i; j < n; j++)
         {
             if (strcmp(file[j].fathername, root) == 0)
             {
                 p = CreateFileTree(file[j].name, file, n); //! 递归
+                p->father = bt;                            // 指向父节点
                 p = p->sbi;
             }
         }
@@ -244,7 +246,7 @@ void ls_a(FileTree pNode, int level)
 
 /**
  * @brief ls <笔记文件夹路径>：显示命令指定文件下所有的内容(子笔记文件夹和笔记文件)
- * @brief 目前只支持绝对路径
+ * //!目前只支持绝对路径
  *
  * @param dirpath 输入的路径名称
  * @param file 数组
@@ -255,10 +257,11 @@ void ls_dir(char *dirpath, FileType file[], FileTree pNode, int n)
 {
     for (int i = 0; i < n; i++)
     {
-        if (strcmp(file[i].path, dirpath))
+        if (strcmp(file[i].path, dirpath)) // 绝对路径匹配，通过路径找到file[i]
         {
-            FileTree b = PreOrderFindNode_Path(pNode, file[i].name); // 查找匹配的节点
-            ls(b);                                                   // 调用ls()函数，打印路径下的所有内容
+            FileTree b;
+            PreOrderFindNode_Path(pNode, file[i].name, b); // 通过file[i]查找匹配的树节点
+            ls(b);                                         // 调用ls()函数，打印路径下的所有内容
         }
         else
         {
@@ -266,16 +269,169 @@ void ls_dir(char *dirpath, FileType file[], FileTree pNode, int n)
         }
     }
 }
-//! 未完成
 /**
- * @brief 用先序遍历递归查找匹配的节点
+ * @brief 通过file[i].name与pNode->name匹配
+ * 用先序遍历递归查找匹配的节点
  *
  * @param pNode
  * @param filename
+ * @param b 将要获取的目标节点
+ */
+void PreOrderFindNode_Path(FileTree pNode, char *filename, FileTree b)
+{
+    if (pNode)
+    {
+        if (strcmp(pNode->name, filename) == 0)
+        {
+            b = pNode;
+            return;
+        }
+        PreOrderFindNode_Path(pNode->fchild, filename, b);
+        PreOrderFindNode_Path(pNode->sbi, filename, b);
+        return;
+    }
+}
+
+/**
+ * @brief ls <笔记文件夹路径> grep “搜索内容”：显示命令指定文件下所有的带
+有搜索内容的文件夹名及文件名
+ *
+ * @param dirpath 笔记文件夹路径
+ * @param SearchContent 搜索内容
+ * @param file 数组
+ * @param root 需要传入Root节点
+ * @param n 数组长度
+ */
+void ls_grep(char *dirpath, char *SearchContent, FileType file[], FileTree root, int n)
+{
+    for (int i = 0; i < n; i++)
+    {
+        if (strcmp(file[i].path, dirpath)) // 绝对路径匹配，通过路径找到file[i]
+        {
+            FileTree b;
+            PreOrderFindNode_Path(root, file[i].name, b); // 通过file[i]查找匹配的树节点
+
+            FileTree p = b->fchild;
+            for (; p; p = p->sbi)
+            {
+                if (result_mohu(SearchContent, p->name)) // 模糊搜索判断是否符合筛选条件
+                {
+                    printf("%s ", p->name);
+                }
+            }
+            printf("\n");
+        }
+        else
+        {
+            printf("未能找到此路径\n");
+        }
+    }
+}
+/**
+ * @brief 模糊搜索判断是否符合筛选条件
+ *
+ * @param key 关键字
+ * @param str 被查找的字符串
+ * @return int 1为符合,0不符合
+ */
+int result_mohu(const char *key, char *str)
+{
+    typedef struct
+    {
+        char son[11];
+    } Element;
+
+    int i, j, k = 0, l = 0, m = 0;
+
+    // f=1为符合筛选条件
+    int f = 0;
+
+    // N1为str的长度 N2为str连续子串的个数
+    int N1 = 0, N2 = 0;
+    N1 = strlen(str);
+    /*计算连续子串的个数*/
+    for (i = 1; i <= N1; i++)
+        N2 += i;
+
+    /*计算连续子串的个数*/
+    // i控制子字符串的长度
+    // j控制赋值
+    // k控制新的线性结构b的下标
+    // l控制子数组的首项在原数组中的位置
+    // m控制即将用作赋值的str的下标
+    Element *b = malloc(sizeof(Element) * N2);
+    for (i = 1; i <= N1; i++)
+    {
+        l = 0;
+        /*while循环内为给一个子字符串数组赋值*/
+        while (1)
+        {
+            m = l;
+            for (j = 0; j < i; j++)
+            {
+                b[k].son[j] = str[m];
+                m++;
+            }
+            l++;
+            k++;
+            if (m == N1)
+                break;
+        }
+    }
+
+    //挨个比对
+    for (i = 0; i < N2; i++)
+        if (strcmp(key, b[i].son) == 0)
+        {
+            f = 1;
+            break;
+        }
+    free(b);
+    return f;
+}
+
+/**
+ * @brief cd ..：将路径切换为当前目录的父目录.若是根目录则则不进行切换
+ * 现在操作函数里判断再进行调用，记得输出当前节点路径哟
+ *
+ * @param pNode 当前节点
  * @return FileTree
  */
-FileTree PreOrderFindNode_Path(FileTree pNode, char *filename)
+FileTree cd(FileTree pNode)
 {
+    if (strcmp(pNode->name, "Root") == 0) // 如果传入的节点是根节点，不进行切换
+    {
+        return pNode; // 返回根节点
+    }
+    return pNode->father;
+}
+/**
+ * @brief cd <笔记文件夹路径>：将路径切换为命令中输入的文件夹路径
+ * //!目前只支持绝对路径
+ *
+ * @param dirpath 输入的路径名称
+ * @param file 数组
+ * @param pNode 先节点
+ * @param root 需要传入Root节点
+ * @param n 数组长度
+ * @return FileTree 返回节点
+ */
+FileTree cd_dir(char *dirpath, FileType file[],FileTree pNode, FileTree root, int n)
+{
+    for (int i = 0; i < n; i++)
+    {
+        if (strcmp(file[i].path, dirpath)) // 绝对路径匹配，通过路径找到file[i]
+        {
+            FileTree b;
+            PreOrderFindNode_Path(root, file[i].name, b); // 通过file[i]查找匹配的树节点
+            return b;
+        }
+        else
+        {
+            printf("未能找到此路径\n");
+            return pNode;
+        }
+    }
 }
 
 /**
@@ -437,7 +593,7 @@ void mkdir(FileTree pNode, char *filename, FileType file[], int *n)
 {
     for (int i = 0; i < *n; i++)
     {
-        if (strcmp(file[i].name, filename) == 0)
+        if (strcmp(file[i].name, filename) == 0) // 禁止重名
         {
             printf("此文件（夹）名称已存在\n");
             return;
@@ -452,6 +608,13 @@ void mkdir(FileTree pNode, char *filename, FileType file[], int *n)
             }
             strcpy(file[*n].fathername, pNode->name);
             strcpy(file[*n].name, filename);
+            // 生成当前路径
+            char tmp[PATHMAXN];
+            strcpy(tmp, file[i].path);
+            strcat(tmp, "\\");
+            strcat(tmp, filename);
+            strcpy(file[*n].path, tmp);
+
             file[*n].flag = 1; // 1表示这是一个文件
             strcpy(file[*n].datetime, getDateTime());
             FileTree p = pNode->fchild;
@@ -485,7 +648,7 @@ void mkdir_r(FileTree pNode, char *filename, FileType file[], int *n)
 {
     for (int i = 0; i < *n; i++)
     {
-        if (strcmp(file[i].name, filename) == 0)
+        if (strcmp(file[i].name, filename) == 0) // 禁止重名
         {
             printf("此文件（夹）名称已存在\n");
             return;

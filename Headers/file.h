@@ -19,7 +19,7 @@ typedef struct FileType
 typedef struct FileNode
 {
     char name[NAMEMAXN];           // 节点文件名或者文件夹名
-    struct FileNode *fchild, *sbi; // 指向第一个子节点和下一个兄弟节点的指针
+    struct FileNode *father,*fchild, *sbi; // 指向夫节点、第一个子节点和下一个兄弟节点的指针
 } FileNode, *FileTree;
 
 void UsersOperation(char *filename);
@@ -74,6 +74,70 @@ void ls(FileTree pNode);
  * @param level = -1
  */
 void ls_a(FileTree pNode, int level);
+
+/**
+ * @brief ls <笔记文件夹路径>：显示命令指定文件下所有的内容(子笔记文件夹和笔记文件)
+ * //!目前只支持绝对路径
+ *
+ * @param dirpath 输入的路径名称
+ * @param file 数组
+ * @param pNode 需要传入Root节点
+ * @param n 数组长度
+ */
+void ls_dir(char *dirpath, FileType file[], FileTree pNode, int n);
+
+/**
+ * @brief 通过file[i].name与pNode->name匹配
+ * 用先序遍历递归查找匹配的节点
+ *
+ * @param pNode
+ * @param filename
+ * @param b 将要获取的目标节点
+ */
+void PreOrderFindNode_Path(FileTree pNode, char *filename, FileTree b);
+
+/**
+ * @brief ls <笔记文件夹路径> grep “搜索内容”：显示命令指定文件下所有的带
+有搜索内容的文件夹名及文件名
+ *
+ * @param dirpath 笔记文件夹路径
+ * @param SearchContent 搜索内容
+ * @param file 数组
+ * @param pNode 需要传入Root节点
+ * @param n 数组长度
+ */
+void ls_grep(char *dirpath, char *SearchContent, FileType file[], FileTree pNode, int n);
+
+/**
+ * @brief 模糊搜索判断是否符合筛选条件
+ *
+ * @param key 关键字
+ * @param str 被查找的字符串
+ * @return int 1为符合,0不符合
+ */
+int result_mohu(const char *key, char *str);
+
+/**
+ * @brief cd ..：将路径切换为当前目录的父目录.若是根目录则则不进行切换
+ * 现在操作函数里判断再进行调用，记得输出当前节点路径哟
+ *
+ * @param pNode 当前节点
+ * @return FileTree
+ */
+FileTree cd(FileTree pNode);
+
+/**
+ * @brief cd <笔记文件夹路径>：将路径切换为命令中输入的文件夹路径
+ * //!目前只支持绝对路径
+ *
+ * @param dirpath 输入的路径名称
+ * @param file 数组
+ * @param pNode 先节点
+ * @param root 需要传入Root节点
+ * @param n 数组长度
+ * @return FileTree 返回节点
+ */
+FileTree cd_dir(char *dirpath, FileType file[],FileTree pNode, FileTree root, int n);
 
 /**
  * @brief rm <笔记文件名>：对笔记文件进行删除
