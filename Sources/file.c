@@ -1,56 +1,32 @@
+#define _CRT_SECURE_NO_WARNINGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include "../Headers/file.h"
+#include "../Headers/user.h"
 
-void UsersOperation(char *filename)
+//去除第一个字符和最后一个字符
+//返回0  表失败
+//返回1  表成功
+int removechar(char *str, char ch)
 {
-    FileType file[FILEMAXN];
-    int n;
-    ReadFile(file, &n, filename);
-    FileTree root = CreateFileTree("Root", file, n); // 创建树，root为根节点
-    ShowInfo();
-    char operation[NAMEMAXN];
-    while (gets(operation) != NULL) //获取输入
-    {                               // 分割出操作命令和参数
-        char *op_1 = strtok(operation, " ");
-        char *op_2 = strtok(NULL, " ");
-        char *op_3 = strtok(NULL, " ");
-        char *op_4 = strtok(NULL, " ");
-        if (strcmp(op_1, "ls") == 0)
-        {
-            /* code */
-        }
-        else if (strcmp(op_1, "cd") == 0)
-        {
-            /* code */
-        }
-        else if (strcmp(op_1, "mv") == 0)
-        {
-            /* code */
-        }
-        else if (strcmp(op_1, "rm") == 0)
-        {
-            /* code */
-        }
-        else if (strcmp(op_1, "mkdir") == 0)
-        {
-            /* code */
-        }
-        else if (strcmp(op_1, "sort") == 0)
-        {
-            /* code */
-        }
-        else if (strcmp(op_1, "tag") == 0)
-        {
-            /* code */
-        }
-        else
-        {
-            printf("ERROR:不支持\"%s\"命令, 请重新输入!\n", operation);
-        }
+    int num = 0;
+    char *temp = str;
+    while (*temp)
+    {
+        num++;
+        temp++;
     }
+    int i;
+    for (i = 0; i < num - 1; i++)
+    {
+        str[i] = str[i + 1];
+    }
+    if (str[i - 1] != ch)
+        return 0;
+    str[i - 1] = '\0';
+    return 1;
 }
 
 void ShowInfo()
@@ -88,7 +64,7 @@ void ShowInfo()
 
     printf("  ******************************************************\n");
     printf("  请输入指令: ");
-    system("pause");
+    // system("pause");
 }
 
 /**
@@ -189,6 +165,7 @@ FileTree CreateFileTree(char *root, FileType file[], int n)
             {
                 p = CreateFileTree(file[j].name, file, n); //! 递归
                 p->father = bt;                            // 指向父节点
+                p->sbi = (FileTree)malloc(sizeof(FileNode));
                 p = p->sbi;
             }
         }
@@ -257,17 +234,15 @@ void ls_dir(char *dirpath, FileType file[], FileTree pNode, int n)
 {
     for (int i = 0; i < n; i++)
     {
-        if (strcmp(file[i].path, dirpath)) // 绝对路径匹配，通过路径找到file[i]
+        if (strcmp(file[i].path, dirpath) == 0) // 绝对路径匹配，通过路径找到file[i]
         {
             FileTree b;
-            PreOrderFindNode_Path(pNode, file[i].name, b); // 通过file[i]查找匹配的树节点
-            ls(b);                                         // 调用ls()函数，打印路径下的所有内容
-        }
-        else
-        {
-            printf("未能找到此路径\n");
+            PreOrderFindNode_Path(pNode, file[i].name, &b); // 通过file[i]查找匹配的树节点
+            ls(b);
+            return; // 调用ls()函数，打印路径下的所有内容
         }
     }
+    printf("未能找到此路径\n");
 }
 /**
  * @brief 通过file[i].name与pNode->name匹配
@@ -277,17 +252,17 @@ void ls_dir(char *dirpath, FileType file[], FileTree pNode, int n)
  * @param filename
  * @param b 将要获取的目标节点
  */
-void PreOrderFindNode_Path(FileTree pNode, char *filename, FileTree b)
+void PreOrderFindNode_Path(FileTree pNode, char *filename, FileTree *b)
 {
     if (pNode)
     {
         if (strcmp(pNode->name, filename) == 0)
         {
-            b = pNode;
+            *b = pNode;
             return;
         }
-        PreOrderFindNode_Path(pNode->fchild, filename, b);
-        PreOrderFindNode_Path(pNode->sbi, filename, b);
+        PreOrderFindNode_Path(pNode->fchild, filename, *b);
+        PreOrderFindNode_Path(pNode->sbi, filename, *b);
         return;
     }
 }
@@ -397,9 +372,9 @@ int result_mohu(const char *key, char *str)
  * @param pNode 当前节点
  * @return FileTree
  */
-FileTree cd(FileTree pNode)
+FileTree cd(FileTree pNode, UserList user)
 {
-    if (strcmp(pNode->name, "Root") == 0) // 如果传入的节点是根节点，不进行切换
+    if (strcmp(pNode->name, user->data->userid) == 0) // 如果传入的节点是根节点，不进行切换
     {
         return pNode; // 返回根节点
     }
@@ -416,7 +391,7 @@ FileTree cd(FileTree pNode)
  * @param n 数组长度
  * @return FileTree 返回节点
  */
-FileTree cd_dir(char *dirpath, FileType file[],FileTree pNode, FileTree root, int n)
+FileTree cd_dir(char *dirpath, FileType file[], FileTree pNode, FileTree root, int n)
 {
     for (int i = 0; i < n; i++)
     {
@@ -588,51 +563,66 @@ void DeleteNode(FileTree pNode, FileType file[], int *n)
  * @param filename
  * @param file 数组
  * @param n 数组长度
+ * @param user
  */
-void mkdir(FileTree pNode, char *filename, FileType file[], int *n)
+void mkdir(FileTree *pNode, char *filename, FileType file[], int *n, UserList user)
 {
+    int locate = 0;
     for (int i = 0; i < *n; i++)
     {
-        if (strcmp(file[i].name, filename) == 0) // 禁止重名
+        if (strcmp(file[i].name, filename) == 0)
         {
             printf("此文件（夹）名称已存在\n");
             return;
         }
-
-        if (strcmp(file[i].name, pNode->name) == 0)
+        if (strcmp(file[i].name, (*pNode)->name) == 0)
         {
-            if (file[i].flag == 1)
-            {
-                printf("这是一个文件，无法在次目录下创建文件\n");
-                return;
-            }
-            strcpy(file[*n].fathername, pNode->name);
-            strcpy(file[*n].name, filename);
-            // 生成当前路径
-            char tmp[PATHMAXN];
-            strcpy(tmp, file[i].path);
-            strcat(tmp, "\\");
-            strcat(tmp, filename);
-            strcpy(file[*n].path, tmp);
-
-            file[*n].flag = 1; // 1表示这是一个文件
-            strcpy(file[*n].datetime, getDateTime());
-            FileTree p = pNode->fchild;
-            if (p)
-            {
-                while (p->sbi)
-                {
-                    p = p->sbi;
-                }
-                strcpy(p->sbi->name, filename);
-            }
-            else
-            {
-                strcpy(p->name, filename);
-            }
-
-            (*n)++;
+            locate = i;
         }
+    }
+    if (strcmp(file[locate].name, (*pNode)->name) == 0)
+    {
+        if (file[locate].flag == 1)
+        {
+            printf("这是一个文件，无法在此目录下创建文件\n");
+            return;
+        }
+        strcpy(file[*n].fathername, (*pNode)->name);
+        strcpy(file[*n].name, filename);
+        file[*n].tagnum = 0; //初始化数量
+        //生成当前路径
+        char tmp[PATHMAXN];
+        strcpy(tmp, file[locate].path);
+        strcat(tmp, "\\");
+        strcat(tmp, filename);
+        strcpy(file[*n].path, tmp);
+
+        file[*n].flag = 1; // 1表示这是一个文件
+        strcpy(file[*n].datetime, getDateTime());
+        FileTree p = (*pNode)->fchild, pttemp = (*pNode);
+        FileTree ptemp = (FileTree)malloc(sizeof(FileNode));
+        strcpy(ptemp->name, filename);
+        ptemp->father = (*pNode);
+        ptemp->fchild = NULL;
+        ptemp->sbi = NULL;
+
+        if (p == NULL)
+        {
+            pttemp->fchild = ptemp;
+        }
+        else
+        {
+            while (p)
+            {
+                pttemp = p;
+                p = p->sbi;
+            }
+            pttemp->sbi = ptemp;
+        }
+
+        (*n)++;
+        SaveFile(file, *n, user->data->userfilename);
+        printf("添加成功\n");
     }
 }
 
@@ -644,50 +634,64 @@ void mkdir(FileTree pNode, char *filename, FileType file[], int *n)
  * @param file 数组
  * @param n 数组长度
  */
-void mkdir_r(FileTree pNode, char *filename, FileType file[], int *n)
+void mkdir_r(FileTree *pNode, char *filename, FileType file[], int *n, UserList user)
 {
+    int locate = 0;
     for (int i = 0; i < *n; i++)
     {
-        if (strcmp(file[i].name, filename) == 0) // 禁止重名
+        if (strcmp(file[i].name, filename) == 0)
         {
             printf("此文件（夹）名称已存在\n");
             return;
         }
-
-        if (strcmp(file[i].name, pNode->name) == 0)
+        if (strcmp(file[i].name, (*pNode)->name) == 0)
         {
-            if (file[i].flag == 1)
-            {
-                printf("这是一个文件，无法在次目录下创建文件");
-                return;
-            }
-            strcpy(file[*n].fathername, pNode->name);
-            strcpy(file[*n].name, filename);
-            // 生成当前路径
-            char tmp[PATHMAXN];
-            strcpy(tmp, file[i].path);
-            strcat(tmp, "\\");
-            strcat(tmp, filename);
-            strcpy(file[*n].path, tmp);
-
-            file[*n].flag = 0; // 0表示这是一个文件夹
-            strcpy(file[*n].datetime, getDateTime());
-            FileTree p = pNode->fchild;
-            if (p)
-            {
-                while (p->sbi)
-                {
-                    p = p->sbi;
-                }
-                strcpy(p->sbi->name, filename);
-            }
-            else
-            {
-                strcpy(p->name, filename);
-            }
-
-            (*n)++;
+            locate = i;
         }
+    }
+    if (strcmp(file[locate].name, (*pNode)->name) == 0)
+    {
+        if (file[locate].flag == 1)
+        {
+            printf("这是一个文件，无法在次目录下创建文件\n");
+            return;
+        }
+        strcpy(file[*n].fathername, (*pNode)->name);
+        strcpy(file[*n].name, filename);
+        file[*n].tagnum = 0; //初始化数量
+        //生成当前路径
+        char tmp[PATHMAXN];
+        strcpy(tmp, file[locate].path);
+        strcat(tmp, "\\");
+        strcat(tmp, filename);
+        strcpy(file[*n].path, tmp);
+
+        file[*n].flag = 0; // 0表示这是一个文件夹
+        strcpy(file[*n].datetime, getDateTime());
+        FileTree p = (*pNode)->fchild, pttemp = (*pNode);
+        FileTree ptemp = (FileTree)malloc(sizeof(FileNode));
+        strcpy(ptemp->name, filename);
+        ptemp->father = (*pNode);
+        ptemp->fchild = NULL;
+        ptemp->sbi = NULL;
+
+        if (p == NULL)
+        {
+            pttemp->fchild = ptemp;
+        }
+        else
+        {
+            while (p)
+            {
+                pttemp = p;
+                p = p->sbi;
+            }
+            pttemp->sbi = ptemp;
+        }
+
+        (*n)++;
+        SaveFile(file, *n, user->data->userfilename);
+        printf("添加成功\n");
     }
 }
 
@@ -854,6 +858,499 @@ void tag_sa(char *tagname, FileType file[], int n)
             {
                 printf("%-20s\t%-20s", file[i].name, file[i].path); //打印文件名和文件路径
             }
+        }
+    }
+}
+
+//判断某一个字符出现的字数
+int countnum(char *str, char ch)
+{
+    char *temp = str;
+    int num = 0;
+    int count = 0;
+    while (*temp)
+    {
+        num++;
+        temp++;
+    }
+    for (int i = 0; i < num; i++)
+    {
+        if (str[i] == ch)
+            count++;
+    }
+    return count;
+}
+
+/*************************需要测试*********************************************/
+/**
+ * @brief mv -r <被移动的文件夹> <目标文件夹>：将指定的笔记文件夹移动到目标文件夹目录下。
+ * @param file        该用户的数组
+ * @param n           数组长度
+ * @param movefile    被移动文件夹名字
+ * @param destination 目标文件夹名字
+ * @param bt          用户的树
+ * @param user        用户节点
+ */
+void mv_r(FileType file[], int n, char *movefile, char *destination, FileTree bt, UserNode *user)
+{
+    int i;
+    int movefilelocate = 0, destinationlocate = 0;
+    // char movefathername[100], movename[100], destinationName[100];
+    int movefilelevel, destinationlevel = 0; //判断文件级别
+    for (i = 0; i < n; i++)
+    {
+        if (strcmp(file[i].name, movefile) == 0) //寻找被移动文件夹名字
+        {
+            if (file[i].flag == 1) //若要移动的是文件
+            {
+                printf("要移动的是文件, 不符合该操作\n");
+                return;
+            }
+            else
+            {
+                if (strcmp(file[i].fathername, destination) == 0)
+                {
+                    printf("文件已经在该目录下");
+                    return;
+                }
+                // strcpy(movefathername, file[i].fathername);//记住上级目录名称
+                // strcpy(movename, file[i].name);//
+                // strcpy(file[i].fathername, destination);
+                movefilelocate = i; //记住被移动文件位置
+
+                // break;
+            }
+        }
+        if (strcmp(destination, file[i].name) == 0) //找到目标文件夹
+        {
+            if (file[i].flag == 1) //文件
+            {
+                printf("该目标不是文件夹\n");
+                return;
+            }
+            // strcpy(destinationName, destination);
+            destinationlocate = i; //记住目标文件夹位置
+        }
+    }
+    destinationlevel = countnum(file[destinationlocate].path, '\\');
+    movefilelevel = countnum(file[movefilelocate].path, '\\');
+    if (movefilelevel < destinationlevel) //移动文件夹的级别小于目标文件夹
+    {
+        printf("移动失败\n");
+        return;
+    }
+    strcpy(file[movefilelocate].fathername, destination);
+    //生成新路径
+    char path[PATHMAXN];
+    strcpy(path, file[destinationlocate].path);
+    strcat(path, "\\");
+    strcat(path, file[movefilelocate].name);
+    strcpy(file[movefilelocate].path, path);
+    //文件保存
+    SaveFile(file, n, user->data->userfilename);
+    FileTree p = bt, ptemp = NULL, pfather = NULL, pchild = NULL, pre = NULL, movefather = NULL;
+    LinkStack s;
+    initLStack(&s);
+    while (n) //遍历树
+    {
+        while (p)
+        {
+            if (p->fchild != NULL)
+                if (p->sbi != NULL)
+                    pushLStack(&s, p);             //入栈
+            if (strcmp(p->name, destination) == 0) //找到目标文件夹
+                pfather = p;
+            if (strcmp(p->name, movefile) == 0) //找到被移动文件夹
+                pchild = p;
+            if (p->sbi)
+            {
+                if (strcmp(p->sbi->name, movefile) == 0) //找到前节点
+                    pre = p;
+            }
+            if (p->fchild)
+            {
+                if (strcmp(p->fchild->name, movefile) == 0) //找到父节点
+                    movefather = p;
+            }
+            ptemp = p;
+            p = p->fchild;
+            n--;
+        }
+        p = ptemp;
+        while (p)
+        {
+            if (p->fchild != NULL)
+                pushLStack(&s, p);                 //入栈
+            if (strcmp(p->name, destination) == 0) //找到目标文件夹
+                pfather = p;
+            if (strcmp(p->name, movefile) == 0) //找到被移动文件夹
+                pchild = p;
+            if (p->sbi)
+            {
+                if (strcmp(p->sbi->name, movefile) == 0) //找到前节点
+                    pre = p;
+            }
+            if (p->fchild)
+            {
+                if (strcmp(p->fchild->name, movefile) == 0) //找到父节点
+                    movefather = p;
+            }
+            p = p->sbi;
+            n--;
+        }
+        if (!isEmptyLStack(&s))
+            popLStack(&s, &p); //出栈
+    }
+
+    if (pre != NULL) //移动文件夹有前节点
+    {
+        pre->sbi = pre->sbi->sbi;
+    }
+    else //没有前节点
+    {
+        movefather->fchild = pchild->sbi;
+    }
+    FileTree pt = pfather->fchild;
+    while (pt)
+    {
+        pt = pt->sbi;
+    }
+    pt = pchild;
+    pchild->father = pfather;
+    pchild->fchild = NULL;
+    pchild->sbi = NULL;
+    printf("移动成功\n");
+}
+
+/**
+ * @brief mv <笔记文件名> <笔记文件夹目录>：将笔记文件移动到指定的文件夹目录下。
+ *        mv <笔记原文件名> <笔记目标文件名>：将笔记文件进行重命名，从原文件名改为目标文件名。
+ * @param file        该用户的数组
+ * @param n           数组长度
+ * @param pfile       文件夹名字
+ * @param destination 目标文件夹名字
+ * @param bt          用户的树
+ * @param user        用户节点
+ */
+void mv(FileType file[], int n, char *pfile, char *destination, FileTree bt, UserNode *user)
+{
+    int i;
+    int pfilelocate = -1, destionationlocate = -1;
+    int renameflag = 1;     // 1表示重命名，0表示移动
+    for (i = 0; i < n; i++) //判断是否移动还是重命名
+    {
+        if (strcmp(destination, file[i].name) == 0) //找到相同名字，表移动操作
+        {
+            if (file[i].flag == 1) //如果目标名字是文件
+            {
+                printf("该目标是文件，无法移动到该目录下");
+                return;
+            }
+            destionationlocate = i; //记住destionation位置
+            renameflag = 0;
+        }
+        if (strcmp(pfile, file[i].name) == 0) //找到文件
+        {
+            if (file[i].flag == 0) //如果是文件夹
+            {
+                printf("你要操作的是文件夹, 不符合该操作\n");
+                return;
+            }
+            else //文件
+            {
+                pfilelocate = i; //记住位置
+            }
+        }
+    }
+    if (pfilelocate == -1) //没有该文件
+    {
+        printf("找不到此文件\n");
+        return;
+    }
+    if (renameflag == 1) //重命名
+    {
+        strcpy(file[pfilelocate].name, destination); //重命名
+    }
+    else //移动文件
+    {
+        //重新生成路径
+        char path[PATHMAXN];
+        strcpy(path, file[destionationlocate].path);
+        strcat(path, "\\");
+        strcat(path, file[pfilelocate].name);
+        strcpy(file[pfilelocate].path, path);
+    }
+    LinkStack s;
+    initLStack(&s);
+    FileTree p = bt, ptemp = NULL, pmove = NULL, pdestination = NULL, pre = NULL;
+    while (n) //遍历树
+    {
+        while (p)
+        {
+            if (p->fchild != NULL)
+                if (p->sbi != NULL)
+                    pushLStack(&s, p);       //入栈
+            if (strcmp(p->name, pfile) == 0) //找到该文件
+            {
+                if (renameflag == 1) //重命名
+                {
+                    strcpy(p->name, destination);
+                    //文件更新
+                    SaveFile(file, n, user->data->userfilename);
+                    return;
+                }
+                pmove = p; //记住要移动的文件的节点位置
+            }
+            if (strcmp(p->name, destination) == 0) //找到目标文件夹名
+            {
+                pdestination = p; //记住该节点位置
+            }
+            if (p->sbi)
+            {
+                if (strcmp(p->sbi->name, pfile) == 0) //找到兄弟节点
+                    pre = p;                          //记住前一个兄弟节点
+            }
+            ptemp = p;
+            p = p->fchild;
+            n--;
+        }
+        p = ptemp;
+        while (p)
+        {
+            if (strcmp(p->name, pfile) == 0) //找到该文件
+            {
+                if (renameflag == 1) //重命名
+                {
+                    strcpy(p->name, destination);
+                    SaveFile(file, n, user->data->userfilename);
+                    return;
+                }
+                pmove = p; //记住要移动的文件的节点位置
+            }
+            if (strcmp(p->name, destination) == 0) //找到目标文件夹名
+                pdestination = p;                  //记住目标节点位置
+            if (p->sbi)
+            {
+                if (strcmp(p->sbi->name, pfile) == 0) //找到兄弟节点
+                    pre = p;                          //记住前一个兄弟节点
+            }
+            p = p->sbi;
+            n--;
+        }
+        if (!isEmptyLStack(&s))
+            popLStack(&s, &p); //出栈
+    }
+
+    if (pre == NULL) //移动的文件是firstchild节点
+    {
+        pmove->father->fchild = pmove->sbi;
+    }
+    else //移动的文件不是firstchild
+    {
+        pre->sbi = pre->sbi->sbi;
+    }
+    FileTree treetmp = pdestination->fchild;
+    while (treetmp)
+    {
+        treetmp = treetmp->sbi;
+    }
+    treetmp = pmove;
+    pmove->father = pdestination;
+    pmove->fchild = NULL;
+    pmove->sbi = NULL;
+    //文件保存
+    SaveFile(file, n, user->data->userfilename);
+}
+
+//初始化栈
+Status initLStack(LinkStack *s)
+{
+    s->top = NULL; //指向空指针
+    s->count = 0;  //初始化数值
+    return SUCCESS;
+}
+
+//判断栈是否为空
+//返回0 表栈不为空
+//返回1 表栈为空
+Status isEmptyLStack(LinkStack *s)
+{
+    if (s->count) //栈不为空
+        return 0;
+    else //栈为空
+        return 1;
+}
+
+//得到栈顶元素
+Status getTopLStack(LinkStack *s, ElemType *e)
+{
+    if (isEmptyLStack(s)) //栈为空
+    {
+        return ERROR;
+    }
+    *e = s->top->data; //将数据传给e
+    return SUCCESS;
+}
+
+//清空栈
+Status clearLStack(LinkStack *s)
+{
+    system("cls");
+    LinkStackPtr p, q;
+    p = s->top; //指向栈顶
+    while (p)
+    {
+        q = p->next; //指向下一个结点
+        free(p);
+        p = q;
+    }
+    s->top = NULL; //指向空指针
+    s->count = 0;  //清空计数
+    return SUCCESS;
+}
+
+//销毁栈
+Status destroyLStack(LinkStack *s)
+{
+    if (isEmptyLStack(s)) //栈为空
+    {
+        return ERROR;
+    }
+    LinkStackPtr p, q;
+    p = s->top; //指向栈顶
+    while (p)
+    {
+        q = p->next; //指向下一个结点
+        free(p);
+        p = q;
+    }
+    s->top = NULL; //指向空指针
+    s->count = 0;  //清空计数
+    return SUCCESS;
+}
+
+//检测栈长度
+Status LStackLength(LinkStack *s, int *length)
+{
+    *length = s->count; //传递个数
+    return SUCCESS;
+}
+
+//入栈
+Status pushLStack(LinkStack *s, ElemType data)
+{
+    LinkStackPtr p = (LinkStackPtr)malloc(sizeof(StackNode)); //开辟一个新的空间
+    if (p == NULL)
+    {
+        printf("%s\n", strerror(errno));
+        return ERROR;
+    }
+    p->next = s->top; // p的next指向栈顶
+    p->data = data;   //获取数据
+    s->top = p;       // p改为栈顶
+    s->count++;       //数量加1
+    return SUCCESS;
+}
+
+//出栈
+Status popLStack(LinkStack *s, ElemType *data)
+{
+    if (isEmptyLStack(s)) //栈为空
+    {
+        return ERROR;
+    }
+    LinkStackPtr p = s->top; // p指向栈顶
+    *data = s->top->data;    //获取数据
+    s->top = s->top->next;   //栈顶指向下一个结点
+    s->count--;              //数量减1
+    free(p);                 //释放空间
+    return SUCCESS;
+}
+
+void UsersOperation(int *n, FileType file[], FileTree Userrootfile, UserNode *user)
+{
+    FileTree pNode = Userrootfile;
+    ShowInfo();
+    char operation[NAMEMAXN];
+    char temp[NAMEMAXN];
+    while ((getstring(100, operation) != -1) && strcpy(temp, operation)) //获取输入
+    {                                                                    // 分割出操作命令和参数
+        char *op_1 = strtok(operation, " ");
+        char *op_2 = strtok(NULL, " ");
+        char *op_3 = strtok(NULL, " ");
+        char *op_4 = strtok(NULL, " ");
+        if (strcmp(op_1, "ls") == 0)
+        {
+            ls(pNode);
+            /* code */
+        }
+        else if (strcmp(op_1, "cd") == 0)
+        {
+            /* code */
+        }
+        else if (strcmp(op_1, "mv") == 0)
+        {
+            /* code */
+        }
+        else if (strcmp(op_1, "rm") == 0)
+        {
+            /* code */
+        }
+        else if (strcmp(op_1, "mkdir") == 0)
+        {
+            if (op_2 != NULL)
+            {
+                if ('<' == *op_2)
+                {
+                    if (removechar(op_2, '>'))
+                    {
+                        if (op_3 == NULL)
+                        {
+                            mkdir(&pNode, op_2, file, n, user);
+                        }
+                        else
+                            goto error;
+                    }
+                    else
+                        goto error;
+                }
+                else if (strcmp("-r", op_2) == 0)
+                {
+                    if ('<' == *op_3)
+                    {
+                        if (removechar(op_3, '>'))
+                        {
+                            if (op_4 == NULL)
+                            {
+                                mkdir_r(&pNode, op_3, file, n, user);
+                            }
+                            else
+                                goto error;
+                        }
+                        else
+                            goto error;
+                    }
+                    else
+                        goto error;
+                }
+                else
+                    goto error;
+            }
+            else
+                goto error;
+        }
+        else if (strcmp(op_1, "sort") == 0)
+        {
+            /* code */
+        }
+        else if (strcmp(op_1, "tag") == 0)
+        {
+            /* code */
+        }
+        else
+        {
+        error:
+            printf("ERROR:不支持\" %s \"命令, 请重新输入!\n", temp);
         }
     }
 }

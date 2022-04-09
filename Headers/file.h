@@ -1,6 +1,9 @@
 #ifndef FILE_H
 #define FILE_H
 
+#define ERROR 0
+#define SUCCESS 1
+
 #define NAMEMAXN 100
 #define PATHMAXN 1000
 #define FILEMAXN 200 // 文件夹最多储存文件数
@@ -18,11 +21,14 @@ typedef struct FileType
 } FileType;
 typedef struct FileNode
 {
-    char name[NAMEMAXN];           // 节点文件名或者文件夹名
-    struct FileNode *father,*fchild, *sbi; // 指向夫节点、第一个子节点和下一个兄弟节点的指针
+    char name[NAMEMAXN];                    // 节点文件名或者文件夹名
+    struct FileNode *father, *fchild, *sbi; // 指向夫节点、第一个子节点和下一个兄弟节点的指针
 } FileNode, *FileTree;
 
-void UsersOperation(char *filename);
+#include "../Headers/user.h"
+
+// void UsersOperation(char *filename);
+void UsersOperation(int *n, FileType file[], FileTree Userrootfile, UserNode *user);
 void ShowInfo();
 
 /**
@@ -137,7 +143,7 @@ FileTree cd(FileTree pNode);
  * @param n 数组长度
  * @return FileTree 返回节点
  */
-FileTree cd_dir(char *dirpath, FileType file[],FileTree pNode, FileTree root, int n);
+FileTree cd_dir(char *dirpath, FileType file[], FileTree pNode, FileTree root, int n);
 
 /**
  * @brief rm <笔记文件名>：对笔记文件进行删除
@@ -169,7 +175,7 @@ void DeleteNode(FileTree pNode, FileType file[], int *n);
  * @param file 数组
  * @param n 数组长度
  */
-void mkdir(FileTree pNode, char *filename, FileType file[], int *n);
+void mkdir(FileTree *pNode, char *filename, FileType file[], int *n, UserList user);
 
 /**
  * @brief mkdir -r<笔记文件夹名>: 新建文件夹
@@ -179,7 +185,7 @@ void mkdir(FileTree pNode, char *filename, FileType file[], int *n);
  * @param file 数组
  * @param n 数组长度
  */
-void mkdir_r(FileTree pNode, char *filename, FileType file[], int *n);
+void mkdir_r(FileTree *pNode, char *filename, FileType file[], int *n, UserList user);
 
 /**
  * @brief tag <笔记文件名/笔记文件夹名> 显示当前目录下的指定笔记/文件夹的标签
@@ -229,5 +235,55 @@ void tag_s(FileNode *pNode, char *tagname, FileType file[], int n);
  * @param n    数组的长度
  */
 void tag_sa(char *tagname, FileType file[], int n);
+
+///*************************需要测试*********************************************/
+///**
+//* @brief mv <笔记文件名> <笔记文件夹目录>：将笔记文件移动到指定的文件夹目录下。
+//*        mv <笔记原文件名> <笔记目标文件名>：将笔记文件进行重命名，从原文件名改为目标文件名。
+//* @param file        该用户的数组
+//* @param n           数组长度
+//* @param pfile       文件夹名字
+//* @param destination 目标文件夹名字
+//* @param bt          用户的树
+//* @param user        用户节点
+//*/
+// void mv(FileType file[], int n, char* pfile, char* destination, FileTree bt, UserNode* user);
+//
+///*************************需要测试*********************************************/
+///**
+//* @brief mv -r <被移动的文件夹> <目标文件夹>：将指定的笔记文件夹移动到目标文件夹目录下。
+//* @param file        该用户的数组
+//* @param n           数组长度
+//* @param movefile    被移动文件夹名字
+//* @param destination 目标文件夹名字
+//* @param bt          用户的树
+//* @param user        用户节点
+//*/
+// void mv_r(FileType file[], int n, char* movefile, char* destination, FileTree bt, UserNode* user);
+
+typedef int Status;
+typedef FileTree ElemType;
+
+typedef struct StackNode
+{
+    ElemType data;
+    struct StackNode *next;
+} StackNode, *LinkStackPtr;
+
+typedef struct LinkStack
+{
+    LinkStackPtr top;
+    int count;
+} LinkStack;
+
+//链栈
+Status initLStack(LinkStack *s);                //初始化栈
+Status isEmptyLStack(LinkStack *s);             //判断栈是否为空
+Status getTopLStack(LinkStack *s, ElemType *e); //得到栈顶元素
+Status clearLStack(LinkStack *s);               //清空栈
+Status destroyLStack(LinkStack *s);             //销毁栈
+Status LStackLength(LinkStack *s, int *length); //检测栈长度
+Status pushLStack(LinkStack *s, ElemType data); //入栈
+Status popLStack(LinkStack *s, ElemType *data); //出栈
 
 #endif

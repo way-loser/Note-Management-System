@@ -7,20 +7,43 @@
 
 int main()
 {
-    UserList L;
-    FileType file[FILEMAXN]; //存放用户文件
-    FileTree Userrootfile;   //用户根目录
-    int n = 0;               //用来表示数组的长度
+    UserList u;
+    FileType file[FILEMAXN];
+    int n;
+    FileTree Userrootfile; //用户根目录
     UserNode *user;
-    InitUserInfo(&L); //初始化所有用户信息
-    // RegisterUser(&L, file, &n);
-    user = LogUser(L, file, &n, &Userrootfile); //用户登录
-    FileTree usertree;
-    if (user == NULL)
-        printf("登录失败");
-    else
+    InitUserInfo(&u); //初始化所有用户信息
+    int input = 0;    //用户菜单输入
+
+    int userinput = 0; //用户菜单输入
+    do
     {
-        ReadFile(file, &n, user->data->userfilename); //将用户信息放到数组中
-    }
+    Input:
+        usermenu();
+        printf("请选择模式[0~2]:>");
+        getint(&input);
+        switch (input)
+        {
+        case 0:
+            break;
+        case 1:
+            user = LogUser(u, file, &n, &Userrootfile);
+            if (user != NULL)
+            {
+                UsersOperation(&n, file, Userrootfile, user);
+            }
+
+            break;
+        case 2:
+            RegisterUser(&u, file, &n);
+            break;
+        default:
+            printf("输入错误,请重新输入[0~2]:");
+            system("pause");
+            goto Input;
+            break;
+        }
+    } while (input);
+    printf("退出系统成功\n");
     return 0;
 }

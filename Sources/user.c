@@ -259,7 +259,15 @@ mode2:
 	strcpy(file[*n].name, userdata.userid);	  //以用户名为名字创建文件夹
 	strcpy(file[*n].datetime, getDateTime()); //获取创建时间
 	file[*n].flag = 0;						  // 0表示文件夹
+	file[*n].tagnum = 0;//初始化
+
+	//生成路径
+	char filename[PATHMAXN];
+	strcpy(filename, file[*n].name);//路径文件夹
+	strcat(filename, ":");
+	strcpy(file[*n].path, filename);
 	(*n)++;
+	
 	SaveFile(file, *n, userdata.userfilename); //保存到文件中
 
 	InsertNewUser(L, &userdata); //插入新节点
@@ -547,4 +555,29 @@ passwordmode1:
 			}
 		}
 	}
+}
+
+//void color(short x)/*自定义函数根据参数改变颜色*/
+//{
+//	if (x >= 0 && x <= 15)
+//		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), x);/*改变字体颜色*/
+//	else/*默认为白色*/
+//		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+//}
+
+
+//用户界面
+void usermenu(void)
+{
+	system("cls");
+	printf("\n\n\n");
+	printf("\t\t\t**********************************\n");
+	printf("\t\t\t*         用户登录界面           *\n");
+	printf("\t\t\t*         1. 账号登录            *\n");
+	printf("\t\t\t*         2. 注册账号            *\n");
+	printf("\t\t\t*         3. 忘记密码            *\n");
+	printf("\t\t\t*         0. 返回                *\n");
+	printf("\t\t\t**********************************\n");
+	printf("\n");
+
 }
